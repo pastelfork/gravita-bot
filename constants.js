@@ -72,7 +72,7 @@ const ENDPOINTS = {
     ARBITRUM: "https://arb-mainnet.g.alchemy.com/v2/"  + process.env.ALCHEMY_KEY,
 }
 
-console.log(ENDPOINTS["ETHEREUM"])
+// console.log(ENDPOINTS["ETHEREUM"])
 const PROVIDERS = {
   ETHEREUM: new ethers.providers.JsonRpcProvider(ENDPOINTS["ETHEREUM"]),
   ARBITRUM: new ethers.providers.JsonRpcProvider(ENDPOINTS["ARBITRUM"]),

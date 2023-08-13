@@ -4,7 +4,6 @@ const Discord = require("discord.js");
 const { MessageEmbed } = require("discord.js");
 const ethers = require("ethers");
 const dotenv = require("dotenv");
-
 dotenv.config();
 
 const { Client, Intents } = require("discord.js");
@@ -22,22 +21,13 @@ client.once("ready", async () => {
 
     await go();
 });
-/*
-const assetSymbol = (asset,chain) => { 
-for (let token of ADDRESS[chain].TOKENS) {
-      if (token.ADDRESS.toLowerCase() === asset.toLowerCase()) {
-        return token.NAME;
-      }
-    }
-return "n/a"
-}*/
 
 const assetInfo = async (asset,chain) => {
-const tokenContract = new ethers.Contract(asset,ABI.ERC20,PROVIDERS[chain])
-const symbol = await tokenContract.symbol()
-const decimals = await tokenContract.decimals()
-const price = await CONTRACTS[chain].PRICEFEED.fetchPrice(asset)
-return {symbol,decimals,price}
+	const tokenContract = new ethers.Contract(asset,ABI.ERC20,PROVIDERS[chain])
+	const symbol = await tokenContract.symbol()
+	const decimals = await tokenContract.decimals()
+	const price = await CONTRACTS[chain].PRICEFEED.fetchPrice(asset)
+	return {symbol,decimals,price}
 }
 
 
@@ -47,11 +37,10 @@ const vEmbed = new MessageEmbed()
           .setColor("#b06dfc")
           .setTitle("New vessel opened on "+vesselData.chain)
 	.setURL(`${ETHERSCAN[vesselData.chain]}/tx/${vesselData.txHash}`)
-// .setDescription("Collateral `"+formatNumber(vesselData.collateral,vesselData.decimals)+" " + vesselData.symbol  +"`\n" + "Debt `"+formatNumber(vesselData.debt,18)+" GRAI`\nLTV `"+vesselData.ltv.toFixed(2)+"%`")
-.setDescription("`"+formatNumber(vesselData.collateral,vesselData.decimals)+"` "+ vesselData.symbol +" Collateral\n`" + formatNumber(vesselData.debt,18) +"` GRAI Debt\n`" + vesselData.ltv.toFixed(2) +"%` LTV") 
-//"Stake `"+formatNumber(vesselData.stake,18)+"`\n"
+	// .setDescription("Collateral `"+formatNumber(vesselData.collateral,vesselData.decimals)+" " + vesselData.symbol  +"`\n" + "Debt `"+formatNumber(vesselData.debt,18)+" GRAI`\nLTV `"+vesselData.ltv.toFixed(2)+"%`")
+	.setDescription("`"+formatNumber(vesselData.collateral,vesselData.decimals)+"` "+ vesselData.symbol +" Collateral\n`" + formatNumber(vesselData.debt,18) +"` GRAI Debt\n`" + vesselData.ltv.toFixed(2) +"%` LTV") 
+	//"Stake `"+formatNumber(vesselData.stake,18)+"`\n"
           
-
 return vEmbed
 }
 
@@ -88,30 +77,28 @@ async function go() {
         testingChannel.send({ embeds: [newVesselEmbed(vessel)]});
     });
 
-    console.log("active pool", activePool);
+    //console.log("active pool", activePool);
 
-    await delay(10000);
+    // await delay(10000);
 }
 
 async function processCreated(log, chain) {
     let asset = ethers.utils.defaultAbiCoder.decode(["address"], log.topics[1]);
     asset = asset[0]    
-console.log("asset", asset);
+	//console.log("asset", asset);
 
     let borrower = ethers.utils.defaultAbiCoder.decode(["address"], log.topics[2]);
     borrower = borrower[0]    
-console.log("borrower", borrower);
+	//console.log("borrower", borrower);
 
     const vessels = await CONTRACTS[chain].VESSEL_MANAGER.Vessels(borrower,asset);
-    console.log("vessels", vessels);
-const { symbol, decimals, price } = await assetInfo(asset, chain);
-const 	collateralValue = parseFloat(ethers.utils.formatUnits(vessels[1],decimals)) * parseFloat(ethers.utils.formatUnits(price,decimals))
-console.log("price",price.toString())
-console.log("coll value",collateralValue)
-const debtFormatted = ethers.utils.formatUnits(vessels[0],18)
-console.log("debt formatted",debtFormatted)
-const ltv = parseFloat(debtFormatted) /collateralValue;
-const ltvPercentage = ltv * 100;
+    // console.log("vessels", vessels);
+    const { symbol, decimals, price } = await assetInfo(asset, chain);
+    const collateralValue = parseFloat(ethers.utils.formatUnits(vessels[1],decimals)) * parseFloat(ethers.utils.formatUnits(price,decimals))
+
+    const debtFormatted = ethers.utils.formatUnits(vessels[0],18)
+    const ltv = parseFloat(debtFormatted) /collateralValue;
+    const ltvPercentage = ltv * 100;
 
     const vesselInfo = {
         debt: vessels[0].toString(),
