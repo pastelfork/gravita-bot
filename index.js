@@ -1,4 +1,4 @@
-const { PROVIDERS, FILTERS, ADDRESS, CONTRACTS, ETHERSCAN } = require("./constants");
+const { PROVIDERS, FILTERS, ADDRESS, CONTRACTS, ETHERSCAN , ABI} = require("./constants");
 const Discord = require("discord.js");
 
 const { MessageEmbed } = require("discord.js");
@@ -22,7 +22,7 @@ client.once("ready", async () => {
 
     await go();
 });
-
+/*
 const assetSymbol = (asset,chain) => { 
 for (let token of ADDRESS[chain].TOKENS) {
       if (token.ADDRESS.toLowerCase() === asset.toLowerCase()) {
@@ -30,7 +30,16 @@ for (let token of ADDRESS[chain].TOKENS) {
       }
     }
 return "n/a"
+}*/
+
+const assetInfo = async (asset,chain) => {
+const tokenContract = new ethers.Contract(asset,ABI.ERC20,PROVIDERS[chain])
+const symbol = await tokenContract.symbol()
+const decimals = await tokenContract.decimals()
+const price = await CONTRACTS[chain].PRICEFEED.fetchPrice(asset)
+return {symbol,decimals,price}
 }
+
 
 const delay = ms => new Promise(res => setTimeout(res, ms));
 const newVesselEmbed = (vesselData) => {
@@ -38,8 +47,8 @@ const vEmbed = new MessageEmbed()
           .setColor("#b06dfc")
           .setTitle("New vessel opened on "+vesselData.chain)
 	.setURL(`${ETHERSCAN[vesselData.chain]}/tx/${vesselData.txHash}`)
-.setDescription("Collateral `"+formatNumber(vesselData.collateral,18)+assetSymbol(vesselData.asset,vesselData.chain) +"`\n" + "Debt `"+formatNumber(vesselData.debt,18)+" GRAI`"+"Collateral `")
-
+// .setDescription("Collateral `"+formatNumber(vesselData.collateral,vesselData.decimals)+" " + vesselData.symbol  +"`\n" + "Debt `"+formatNumber(vesselData.debt,18)+" GRAI`\nLTV `"+vesselData.ltv.toFixed(2)+"%`")
+.setDescription("`"+formatNumber(vesselData.collateral,vesselData.decimals)+"` "+ vesselData.symbol +" Collateral\n`" + formatNumber(vesselData.debt,18) +"` GRAI Debt\n`" + vesselData.ltv.toFixed(2) +"%` LTV") 
 //"Stake `"+formatNumber(vesselData.stake,18)+"`\n"
           
 
@@ -59,7 +68,7 @@ async function go() {
         throw new Error("Testing channel is not defined.");
     }
 
-     testingChannel.send('test');
+    // testingChannel.send('test msg');
 
     
     const activePool = await CONTRACTS["ETHEREUM"].VESSEL_MANAGER_OPERATIONS.activePool();
@@ -95,6 +104,14 @@ console.log("borrower", borrower);
 
     const vessels = await CONTRACTS[chain].VESSEL_MANAGER.Vessels(borrower,asset);
     console.log("vessels", vessels);
+const { symbol, decimals, price } = await assetInfo(asset, chain);
+const 	collateralValue = parseFloat(ethers.utils.formatUnits(vessels[1],decimals)) * parseFloat(ethers.utils.formatUnits(price,decimals))
+console.log("price",price.toString())
+console.log("coll value",collateralValue)
+const debtFormatted = ethers.utils.formatUnits(vessels[0],18)
+console.log("debt formatted",debtFormatted)
+const ltv = parseFloat(debtFormatted) /collateralValue;
+const ltvPercentage = ltv * 100;
 
     const vesselInfo = {
         debt: vessels[0].toString(),
@@ -103,7 +120,11 @@ console.log("borrower", borrower);
         chain: chain,
         asset: asset,
         borrower: borrower,
-        txHash: log.transactionHash
+        txHash: log.transactionHash,
+	symbol: symbol,
+        decimals: decimals,
+        price: price.toString(),
+        ltv: ltvPercentage,
     };
     
     return vesselInfo;
