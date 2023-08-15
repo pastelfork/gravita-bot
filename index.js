@@ -47,7 +47,6 @@ const newVesselEmbed = (vesselData) => {
     .setColor("#b06dfc")
     .setTitle("New vessel opened on " + vesselData.chain)
     .setURL(`${ETHERSCAN[vesselData.chain]}/tx/${vesselData.txHash}`)
-    // .setDescription("Collateral `"+formatNumber(vesselData.collateral,vesselData.decimals)+" " + vesselData.symbol  +"`\n" + "Debt `"+formatNumber(vesselData.debt,18)+" GRAI`\nLTV `"+vesselData.ltv.toFixed(2)+"%`")
     .setDescription(
       "`" +
         formatNumber(vesselData.collateral, vesselData.decimals) +

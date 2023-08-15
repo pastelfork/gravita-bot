@@ -1,0 +1,24 @@
+// 0xc49B737fa56f9142974a54F6C66055468eC631d0 - Vessel Manager Operations
+// topic 0xa3f221854f649364e9a3bb384dd1ff938482664f4a0eac0f6e39a542f5193bd3
+// Liquidation
+// _liquidatedDebt :
+// 50870615100000000000000
+// _liquidatedColl :
+// 30190469100000000000
+// _collGasCompensation :
+// 151710900000000000
+// _debtTokenGasCompensation :
+// 200000000000000000000
+
+// 0x2bCA0300c2aa65de6F19c2d241B54a445C9990E2 - Borrower Operations
+// topic 0xc4acb8f55d18541d201c0e84984eacc725592d1043776db306c00720b2a503ff
+// VesselCreated
+// VesselCreated (index_topic_1 address _asset, index_topic_2 address _borrower, uint256 arrayIndex)View Source
+
+// 0xdB5DAcB1DFbe16326C3656a88017f0cB4ece0977 - Vessel Manager
+// Vessels read
+//  debt uint256, coll uint256, stake uint256, status uint8, arrayIndex uint128
+
+// vessel manager operations
+// 		emit Redemption(_asset, _debtTokenAmount, totals.totalDebtToRedeem, totals.totalCollDrawn, totals.collFee);
+
