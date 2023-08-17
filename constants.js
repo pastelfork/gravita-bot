@@ -41,6 +41,8 @@ const TOPICS = {
     "0xc4acb8f55d18541d201c0e84984eacc725592d1043776db306c00720b2a503ff",
   LIQUIDATION:
     "0xa3f221854f649364e9a3bb384dd1ff938482664f4a0eac0f6e39a542f5193bd3",
+  REDEMPTION: 
+    "0x08b6f1ce3f9ab2722e8ea40c31a3e3a806a41702c5994f29af43dc0c1f2837df",
 };
 
 const FILTERS = {
@@ -49,14 +51,31 @@ const FILTERS = {
       address: ADDRESS["ETHEREUM"].BORROWER_OPERATIONS,
       topics: [TOPICS.VESSEL_CREATED],
     },
+    LIQUIDATION: {
+      address: ADDRESS["ETHEREUM"].VESSEL_MANAGER_OPERATIONS,
+      topics: [TOPICS.LIQUIDATION]
+    },
+    REDEMPTION: {
+      address: ADDRESS["ETHEREUM"].VESSEL_MANAGER_OPERATIONS,
+      topics: [TOPICS.REDEMPTION]
+    }
   },
   ARBITRUM: {
     VESSEL_CREATED: {
       address: ADDRESS["ARBITRUM"].BORROWER_OPERATIONS,
       topics: [TOPICS.VESSEL_CREATED],
     },
+    LIQUIDATION: {
+      address: ADDRESS["ARBITRUM"].VESSEL_MANAGER_OPERATIONS,
+      topics: [TOPICS.LIQUIDATION]
+    },
+    REDEMPTION: {
+      address: ADDRESS["ARBITRUM"].VESSEL_MANAGER_OPERATIONS,
+      topics: [TOPICS.REDEMPTION]
+    }
   },
 };
+
 const ENDPOINTS = {
   ETHEREUM: "https://eth-mainnet.g.alchemy.com/v2/" + process.env.ALCHEMY_KEY,
   ARBITRUM: "https://arb-mainnet.g.alchemy.com/v2/" + process.env.ALCHEMY_KEY,

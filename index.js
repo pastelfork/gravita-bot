@@ -8,7 +8,8 @@ const {
 } = require("./constants");
 const Discord = require("discord.js");
 
-const { MessageEmbed } = require("discord.js");
+const { newVesselEmbed, liquidationEmbed } = require('./embeds');
+
 const ethers = require("ethers");
 const dotenv = require("dotenv");
 dotenv.config();
@@ -19,11 +20,15 @@ const client = new Discord.Client({
   intents: ["GUILDS", "GUILD_MESSAGES", "DIRECT_MESSAGES"],
 });
 
+const SUPPORTED_CHAINS = ["ETHEREUM", "ARBITRUM"];
+
 const TESTCHANNEL = "932504732818362378";
 let testingChannel;
 
+const VESSEL_MANAGER_INTERFACE = new ethers.utils.Interface(ABI.VESSEL_MANAGER_OPERATIONS)
+
 client.once("ready", async () => {
-  console.log("Ready!");
+  console.log("Gravita BOT Ready!");
   testingChannel = client.channels.cache.get(TESTCHANNEL);
 
   await go();
@@ -41,85 +46,125 @@ const assetInfo = async (asset, chain) => {
 }
 };
 
-const delay = (ms) => new Promise((res) => setTimeout(res, ms));
-const newVesselEmbed = (vesselData) => {
-  const vEmbed = new MessageEmbed()
-    .setColor("#b06dfc")
-    .setTitle("New vessel opened on " + vesselData.chain)
-    .setURL(`${ETHERSCAN[vesselData.chain]}/tx/${vesselData.txHash}`)
-    .setDescription(
-      "`" +
-        formatNumber(vesselData.collateral, vesselData.decimals) +
-        "` " +
-        vesselData.symbol +
-        " Collateral\n`" +
-        formatNumber(vesselData.debt, 18) +
-        "` GRAI Debt\n`" +
-        vesselData.ltv.toFixed(2) +
-        "%` LTV"
-    );
-  //"Stake `"+formatNumber(vesselData.stake,18)+"`\n"
-
-  return vEmbed;
-};
-
-const formatNumber = (number, decimals) => {
-  const scaledNumber = number / Math.pow(10, decimals);
-  const fixedNum = parseFloat(scaledNumber).toFixed(2);
-  let [integerPart, decimalPart] = fixedNum.split(".");
-  integerPart = integerPart.replace(/\B(?=(\d{3})+(?!\d))/g, ",");
-  return `${integerPart}.${decimalPart}`;
-};
-
-async function go() {
-try{
-  if (!testingChannel) {
-    throw new Error("Testing channel is not defined.");
+const eventHandlers = {
+  VESSEL_CREATED: async (event, chain) => {
+    console.log(`${chain} vessel created `, event);
+    const vessel = await processCreated(event, chain);
+    console.log(vessel);
+    testingChannel.send({ embeds: [newVesselEmbed(vessel)] });
+  },
+  LIQUIDATION: async (event, chain) => {
+    console.log(`${chain} liquidation`, event);
+    const liq = await processLiquidated(event, chain);
+    console.log(liq);
+    testingChannel.send({ embeds: [liquidationEmbed(liq)] });
+  },
+  REDEMPTION: async (event, chain) => {
+    console.log(`${chain} redemption`, event);
+    const redeemed = await processRedeemed(event, chain);
+    console.log(redeemed);
+    // testingChannel.send({ embeds: [redeemedEmbed(redeemed)] });
   }
+};
 
-  // testingChannel.send('test msg');
+// const delay = (ms) => new Promise((res) => setTimeout(res, ms));
+async function go() {
+  try {
+      if (!testingChannel) {
+          throw new Error("Testing channel is not defined.");
+      }
 
-  const activePool = await CONTRACTS[
-    "ETHEREUM"
-  ].VESSEL_MANAGER_OPERATIONS.activePool();
-try{
-  PROVIDERS["ETHEREUM"].on(
-    FILTERS["ETHEREUM"].VESSEL_CREATED,
-    async (vesselCreated) => {
-      console.log(vesselCreated);
-      const vessel = await processCreated(vesselCreated, "ETHEREUM");
-      console.log(vessel);
-      testingChannel.send({ embeds: [newVesselEmbed(vessel)] });
-    }
-  );
-} catch (error) {
-    console.error("Error in ETHEREUM VESSEL_CREATED event:", error.message);
-}
-try{
-  PROVIDERS["ARBITRUM"].on(
-    FILTERS["ARBITRUM"].VESSEL_CREATED,
-    async (vesselCreated) => {
-      console.log("arb", vesselCreated);
-      const vessel = await processCreated(vesselCreated, "ARBITRUM");
-      console.log(vessel);
-      testingChannel.send({ embeds: [newVesselEmbed(vessel)] });
-    }
-  );
-} catch (error) {
-    console.error("Error in ARBITRUM VESSEL_CREATED event:", error.message);
+      // Loop through each supported chain
+      SUPPORTED_CHAINS.forEach((chain) => {
+          
+          // Loop through each event present in the eventHandlers object
+          Object.keys(eventHandlers).forEach((event) => {
+              try {
+                  PROVIDERS[chain].on(FILTERS[chain][event], async (log) => {
+                      await eventHandlers[event](log, chain);
+                  });
+              } catch (error) {
+                  console.error(`Error in ${chain} ${event} event:`, error.message);
+              }
+          });
+      });
+  } catch (error) {
+      console.error("Error in go():", error.message);
+  }
 }
 
-  //console.log("active pool", activePool);
+async function processRedeemed(log, chain) {
+  console.log("processing redeemed", log);
+  
+  const parsedLog = VESSEL_MANAGER_INTERFACE.parseLog(log);
+  console.log("redemption parsed", parsedLog);
+  
+  // const asset = parsedLog.args._asset;
+  
+  // const { symbol, decimals, price } = await assetInfo(asset, chain);
+  
+  // const liquidatedDebt = ethers.utils.formatUnits(parsedLog.args._liquidatedDebt, 18);
+  // const debtTokenGasCompensation = ethers.utils.formatUnits(parsedLog.args._debtTokenGasCompensation, 18);
+  // const liquidatedColl = ethers.utils.formatUnits(parsedLog.args._liquidatedColl, decimals);
+  // const collGasCompensation = ethers.utils.formatUnits(parsedLog.args._collGasCompensation, decimals);
 
-  // await delay(10000);
-} catch (error) {
-    console.error("Error in go():", error.message);
+  // const liquidationInfo = {
+  //     asset: asset,
+  //     txHash: log.transactionHash,
+  //     chain: chain,
+  //     symbol: symbol,
+  //     decimals: decimals,
+  //     price: price,
+  //     liquidatedDebt: liquidatedDebt,
+  //     debtTokenGasCompensation: debtTokenGasCompensation,
+  //     liquidatedColl: liquidatedColl,
+  //     collGasCompensation: collGasCompensation
+  // };
+  
+  // return liquidationInfo;
 }
+
+async function processLiquidated(log, chain) {
+  console.log("processing liquidated", log);
+  
+  const parsedLog = VESSEL_MANAGER_INTERFACE.parseLog(log);
+  console.log("liquidation parsed", parsedLog);
+  
+  const asset = parsedLog.args._asset;
+  
+  const { symbol, decimals, price } = await assetInfo(asset, chain);
+  
+  const liquidatedDebt = ethers.utils.formatUnits(parsedLog.args._liquidatedDebt, 18);
+  const debtTokenGasCompensation = ethers.utils.formatUnits(parsedLog.args._debtTokenGasCompensation, 18);
+  const liquidatedColl = ethers.utils.formatUnits(parsedLog.args._liquidatedColl, decimals);
+  const collGasCompensation = ethers.utils.formatUnits(parsedLog.args._collGasCompensation, decimals);
+  const collateralValue =
+    parseFloat(liquidatedColl) *
+    parseFloat(ethers.utils.formatUnits(price, decimals));
+  const ltv = parseFloat(liquidatedDebt) / collateralValue
+  const ltvpercentage = ltv * 100
+
+  const liquidationInfo = {
+      asset: asset,
+      txHash: log.transactionHash,
+      chain: chain,
+      symbol: symbol,
+      decimals: decimals,
+      price: price,
+      liquidatedDebt: liquidatedDebt,
+      debtTokenGasCompensation: debtTokenGasCompensation,
+      liquidatedColl: liquidatedColl,
+      collGasCompensation: collGasCompensation,
+      ltv: ltvpercentage
+  };
+  
+  return liquidationInfo;
 }
 
 async function processCreated(log, chain) {
   let asset = ethers.utils.defaultAbiCoder.decode(["address"], log.topics[1]);
   asset = asset[0];
+
   //console.log("asset", asset);
 
   let borrower = ethers.utils.defaultAbiCoder.decode(
