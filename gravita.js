@@ -8,7 +8,7 @@ const {
 } = require("./constants");
 const Discord = require("discord.js");
 
-const { newVesselEmbed, liquidationEmbed } = require('./embeds');
+const { newVesselEmbed, liquidationEmbed, redeemedEmbed } = require('./embeds');
 
 const ethers = require("ethers");
 const dotenv = require("dotenv");
@@ -48,7 +48,7 @@ const assetInfo = async (asset, chain) => {
 
 const eventHandlers = {
   VESSEL_CREATED: async (event, chain) => {
-    console.log(`${chain} vessel created `, event);
+    console.log(`${chain} vessel created `);
     const vessel = await processCreated(event, chain);
     console.log(vessel);
     testingChannel.send({ embeds: [newVesselEmbed(vessel)] });
@@ -56,19 +56,27 @@ const eventHandlers = {
   LIQUIDATION: async (event, chain) => {
     console.log(`${chain} liquidation`, event);
     const liq = await processLiquidated(event, chain);
-    console.log(liq);
+    console.log("liquidation returned",liq);
     testingChannel.send({ embeds: [liquidationEmbed(liq)] });
   },
   REDEMPTION: async (event, chain) => {
     console.log(`${chain} redemption`, event);
     const redeemed = await processRedeemed(event, chain);
-    console.log(redeemed);
-    // testingChannel.send({ embeds: [redeemedEmbed(redeemed)] });
+    console.log("processed",redeemed);
+    testingChannel.send({ embeds: [redeemedEmbed(redeemed)] });
   }
 };
 
+async function handleEvent(event, log, chain) {
+    try {
+        await eventHandlers[event](log, chain);
+    } catch (error) {
+        console.error(`Error handling ${event} event on ${chain}:`, error);
+    }
+}
+
 // const delay = (ms) => new Promise((res) => setTimeout(res, ms));
-async function go() {
+/*async function go() {
   try {
       if (!testingChannel) {
           throw new Error("Testing channel is not defined.");
@@ -92,6 +100,32 @@ async function go() {
       console.error("Error in go():", error.message);
   }
 }
+*/
+
+async function go() {
+    try {
+        if (!testingChannel) {
+            throw new Error("Testing channel is not defined.");
+        }
+
+        // Loop through each supported chain
+        SUPPORTED_CHAINS.forEach((chain) => {
+            
+            // This listens for any 'error' event emitted by the provider.
+            PROVIDERS[chain].on('error', (error) => {
+                console.error(`Error with provider for ${chain}:`, error);
+            });
+
+            // Loop through each event present in the eventHandlers object
+            Object.keys(eventHandlers).forEach((event) => {
+                PROVIDERS[chain].on(FILTERS[chain][event], (log) => handleEvent(event, log, chain));
+            });
+        });
+    } catch (error) {
+        console.error("Error in go():", error.message);
+    }
+}
+
 
 async function processRedeemed(log, chain) {
   console.log("processing redeemed", log);
@@ -99,29 +133,32 @@ async function processRedeemed(log, chain) {
   const parsedLog = VESSEL_MANAGER_INTERFACE.parseLog(log);
   console.log("redemption parsed", parsedLog);
   
-  // const asset = parsedLog.args._asset;
+ const asset = parsedLog.args._asset;
   
-  // const { symbol, decimals, price } = await assetInfo(asset, chain);
-  
-  // const liquidatedDebt = ethers.utils.formatUnits(parsedLog.args._liquidatedDebt, 18);
-  // const debtTokenGasCompensation = ethers.utils.formatUnits(parsedLog.args._debtTokenGasCompensation, 18);
-  // const liquidatedColl = ethers.utils.formatUnits(parsedLog.args._liquidatedColl, decimals);
-  // const collGasCompensation = ethers.utils.formatUnits(parsedLog.args._collGasCompensation, decimals);
+  const { symbol, decimals, price } = await assetInfo(asset, chain);
 
-  // const liquidationInfo = {
-  //     asset: asset,
-  //     txHash: log.transactionHash,
-  //     chain: chain,
-  //     symbol: symbol,
-  //     decimals: decimals,
-  //     price: price,
-  //     liquidatedDebt: liquidatedDebt,
-  //     debtTokenGasCompensation: debtTokenGasCompensation,
-  //     liquidatedColl: liquidatedColl,
-  //     collGasCompensation: collGasCompensation
-  // };
+//		emit Redemption(_asset, _debtTokenAmount, totals.totalDebtToRedeem, totals.totalCollDrawn, totals.collFee);
+
   
-  // return liquidationInfo;
+const attemptedDebtAmount = ethers.utils.formatUnits(parsedLog.args._attemptedDebtAmount, 18);
+const actualDebtAmount = ethers.utils.formatUnits(parsedLog.args._actualDebtAmount, 18);
+const collSent = ethers.utils.formatUnits(parsedLog.args._collSent, decimals);
+const collFee = ethers.utils.formatUnits(parsedLog.args._collFee, decimals);
+
+  const redemptionInfo = {
+       asset: asset,
+       txHash: log.transactionHash,
+       chain: chain,
+       symbol: symbol,
+       decimals: decimals,
+       price: price,
+       attemptedDebtAmount: attemptedDebtAmount,
+	actualDebtAmount: actualDebtAmount,
+collSent: collSent,
+collFee: collFee,
+  };
+  
+  return redemptionInfo;
 }
 
 async function processLiquidated(log, chain) {
@@ -151,10 +188,10 @@ async function processLiquidated(log, chain) {
       symbol: symbol,
       decimals: decimals,
       price: price,
-      liquidatedDebt: liquidatedDebt,
-      debtTokenGasCompensation: debtTokenGasCompensation,
-      liquidatedColl: liquidatedColl,
-      collGasCompensation: collGasCompensation,
+      liquidatedDebt: parseFloat(liquidatedDebt),
+      debtTokenGasCompensation: parseFloat(debtTokenGasCompensation),
+      liquidatedColl: parseFloat(liquidatedColl),
+      collGasCompensation: parseFloat(collGasCompensation),
       ltv: ltvpercentage
   };
   
@@ -162,6 +199,7 @@ async function processLiquidated(log, chain) {
 }
 
 async function processCreated(log, chain) {
+  console.log("processing vessel created")
   let asset = ethers.utils.defaultAbiCoder.decode(["address"], log.topics[1]);
   asset = asset[0];
 
