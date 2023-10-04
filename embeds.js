@@ -82,17 +82,32 @@ const redeemedEmbed = (redemptionData) => {
 
 
     const vEmbed = new MessageEmbed()
-      .setColor("#b06dfc")
-      .setTitle("New " + redemptionData.symbol + " redemption on " + capitalizeFirstLetter(redemptionData.chain))
-      .setURL(`${ETHERSCAN[redemptionData.chain]}/tx/${redemptionData.txHash}`)
-      .setDescription(  
-          "`$" + (redemptionData.price/1e18).toFixed(2) + "` " + redemptionData.symbol + " \n" +
-          "`" + parseFloat(redemptionData.attemptedDebtAmount).toFixed(2) + "` attempted GRAI \n" + 
-          "`" + parseFloat(redemptionData.actualDebtAmount).toFixed(2) + "` actual GRAI \n" +
-          "`" + parseFloat(redemptionData.collSent).toFixed(2) + "` "+ redemptionData.symbol +" sent\n" +
-          "`" + parseFloat(redemptionData.collFee).toFixed(2) + "` "+ redemptionData.symbol + " fee\n" 
-          // "`" + redemptionData.collGasCompensation.toFixed(2) + "` " + redemptionData.symbol + " to redeemer"
-      );
+      .setColor("#f7ab1a")
+      .setTitle(Emoji("pepeCry") + " New redemption")
+      .setDescription("["+redemptionData.sender.substring(0,6) + "](" + `https://debank.com/profile/${redemptionData.sender}` + ") redeemed on [" + capitalizeFirstLetter(redemptionData.chain) + "]("+`${ETHERSCAN[redemptionData.chain]}/tx/${redemptionData.txHash}`+")")
+      .addField(
+        redemptionData.symbol + " Price",
+        "$" + (redemptionData.price/1e18).toFixed(2),
+        true 
+      )
+       .addField(
+      redemptionData.symbol,
+      parseFloat(redemptionData.collSent).toFixed(2),
+      true 
+    )
+ .addField(
+      redemptionData.symbol + " Fee",
+        parseFloat(redemptionData.collFee).toFixed(2),
+true     
+    )
+      .addField(
+        "GRAI Debt",
+        parseFloat(redemptionData.actualDebtAmount).toFixed(2) 
+      )
+    .addField(
+      "Timestamp",
+        "<t:"+ redemptionData.timestamp +":R> " + "(<t:" + redemptionData.timestamp +":f>)");
+
     return vEmbed;
 
   } catch (error) {

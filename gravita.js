@@ -45,6 +45,22 @@ const assetInfo = async (asset, chain) => {
     console.error("Error in assetInfo():", error.message);
 }
 };
+
+async function getTransactionSender(provider, txHash) {
+    try {
+        // Fetch the transaction details using the given transaction hash
+        const tx = await provider.getTransaction(txHash);       
+        if (!tx) {
+            console.log('Transaction not found');
+            return null;
+        }
+        return tx.from; // The sender's address
+    } catch (error) {
+        console.error('Error fetching transaction sender:', error);
+        return null;
+    }
+}
+
 async function getTransactionTimestamp(provider, txHash) {
     try {
         // Get transaction receipt to obtain the block number
@@ -82,6 +98,7 @@ const eventHandlers = {
     console.log("liquidation returned",liq);
     testingChannel.send({ embeds: [liquidationEmbed(liq)] });
   },
+*/
   REDEMPTION: async (event, chain) => {
     console.log(`${chain} redemption`, event);
     const redeemed = await processRedeemed(event, chain);
@@ -90,7 +107,7 @@ const eventHandlers = {
     await testingChannel.send({ embeds: [embed] });
    }
 
-*/
+
 };
 
 async function handleEvent(event, log, chain) {
@@ -135,16 +152,17 @@ async function processRedeemed(log, chain) {
   
  const asset = parsedLog.args._asset;
   
-  const { symbol, decimals, price } = await assetInfo(asset, chain);
+ const { symbol, decimals, price } = await assetInfo(asset, chain);
 
-
-  
-const attemptedDebtAmount = ethers.utils.formatUnits(parsedLog.args._attemptedDebtAmount, 18);
-const actualDebtAmount = ethers.utils.formatUnits(parsedLog.args._actualDebtAmount, 18);
-const collSent = ethers.utils.formatUnits(parsedLog.args._collSent, decimals);
-const collFee = ethers.utils.formatUnits(parsedLog.args._collFee, decimals);
-
-  const redemptionInfo = {
+ const attemptedDebtAmount = ethers.utils.formatUnits(parsedLog.args._attemptedDebtAmount, 18);
+ const actualDebtAmount = ethers.utils.formatUnits(parsedLog.args._actualDebtAmount, 18);
+ const collSent = ethers.utils.formatUnits(parsedLog.args._collSent, decimals);
+ const collFee = ethers.utils.formatUnits(parsedLog.args._collFee, decimals);
+ const sender = await getTransactionSender(PROVIDERS[chain],log.transactionHash)
+const timestamp = await getTransactionTimestamp(PROVIDERS[chain],log.transactionHash)  
+const redemptionInfo = {
+       timestamp: timestamp,  
+       sender: sender,
        asset: asset,
        txHash: log.transactionHash,
        chain: chain,
