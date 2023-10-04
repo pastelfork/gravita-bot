@@ -45,6 +45,26 @@ const assetInfo = async (asset, chain) => {
     console.error("Error in assetInfo():", error.message);
 }
 };
+async function getTransactionTimestamp(provider, txHash) {
+    try {
+        // Get transaction receipt to obtain the block number
+        const txReceipt = await provider.getTransactionReceipt(txHash);
+        
+        if (!txReceipt) {
+            console.log('Transaction not found');
+            return null;
+        }
+
+        // Get block to obtain the timestamp
+        const block = await provider.getBlock(txReceipt.blockNumber);
+
+        return block.timestamp;
+    } catch (error) {
+        console.error('Error fetching transaction timestamp:', error);
+        return null;
+    }
+}
+
 
 const eventHandlers = {
   VESSEL_CREATED: async (event, chain) => {
@@ -53,7 +73,10 @@ const eventHandlers = {
     console.log(vessel);
     testingChannel.send({ embeds: [newVesselEmbed(vessel)] });
   },
-  LIQUIDATION: async (event, chain) => {
+  
+
+// WIP finalizing formatting for embeds
+/*  LIQUIDATION: async (event, chain) => {
     console.log(`${chain} liquidation`, event);
     const liq = await processLiquidated(event, chain);
     console.log("liquidation returned",liq);
@@ -63,8 +86,11 @@ const eventHandlers = {
     console.log(`${chain} redemption`, event);
     const redeemed = await processRedeemed(event, chain);
     console.log("processed",redeemed);
-    testingChannel.send({ embeds: [redeemedEmbed(redeemed)] });
-  }
+    const embed = redeemedEmbed(redeemed);
+    await testingChannel.send({ embeds: [embed] });
+   }
+
+*/
 };
 
 async function handleEvent(event, log, chain) {
@@ -75,32 +101,6 @@ async function handleEvent(event, log, chain) {
     }
 }
 
-// const delay = (ms) => new Promise((res) => setTimeout(res, ms));
-/*async function go() {
-  try {
-      if (!testingChannel) {
-          throw new Error("Testing channel is not defined.");
-      }
-
-      // Loop through each supported chain
-      SUPPORTED_CHAINS.forEach((chain) => {
-          
-          // Loop through each event present in the eventHandlers object
-          Object.keys(eventHandlers).forEach((event) => {
-              try {
-                  PROVIDERS[chain].on(FILTERS[chain][event], async (log) => {
-                      await eventHandlers[event](log, chain);
-                  });
-              } catch (error) {
-                  console.error(`Error in ${chain} ${event} event:`, error.message);
-              }
-          });
-      });
-  } catch (error) {
-      console.error("Error in go():", error.message);
-  }
-}
-*/
 
 async function go() {
     try {
@@ -137,7 +137,6 @@ async function processRedeemed(log, chain) {
   
   const { symbol, decimals, price } = await assetInfo(asset, chain);
 
-//		emit Redemption(_asset, _debtTokenAmount, totals.totalDebtToRedeem, totals.totalCollDrawn, totals.collFee);
 
   
 const attemptedDebtAmount = ethers.utils.formatUnits(parsedLog.args._attemptedDebtAmount, 18);
@@ -153,9 +152,9 @@ const collFee = ethers.utils.formatUnits(parsedLog.args._collFee, decimals);
        decimals: decimals,
        price: price,
        attemptedDebtAmount: attemptedDebtAmount,
-	actualDebtAmount: actualDebtAmount,
-collSent: collSent,
-collFee: collFee,
+       actualDebtAmount: actualDebtAmount,
+       collSent: collSent,
+       collFee: collFee,
   };
   
   return redemptionInfo;
@@ -203,14 +202,11 @@ async function processCreated(log, chain) {
   let asset = ethers.utils.defaultAbiCoder.decode(["address"], log.topics[1]);
   asset = asset[0];
 
-  //console.log("asset", asset);
-
   let borrower = ethers.utils.defaultAbiCoder.decode(
     ["address"],
     log.topics[2]
   );
   borrower = borrower[0];
-  //console.log("borrower", borrower);
 
   const vessels = await CONTRACTS[chain].VESSEL_MANAGER.Vessels(
     borrower,
@@ -226,12 +222,14 @@ async function processCreated(log, chain) {
   const ltv = parseFloat(debtFormatted) / collateralValue;
   const ltvPercentage = ltv * 100;
 
+  const timestamp = await getTransactionTimestamp(PROVIDERS[chain],log.transactionHash)
   const vesselInfo = {
     debt: vessels[0].toString(),
     collateral: vessels[1].toString(),
     stake: vessels[2].toString(),
     chain: chain,
     asset: asset,
+    timestamp: timestamp,
     borrower: borrower,
     txHash: log.transactionHash,
     symbol: symbol,

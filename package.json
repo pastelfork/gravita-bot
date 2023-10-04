@@ -1,8 +1,8 @@
 {
-  "name": "gravita",
+  "name": "gravita discord bot",
   "version": "1.0.0",
   "description": "",
-  "main": "index.js",
+  "main": "gravita.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
   },
