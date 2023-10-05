@@ -46,6 +46,38 @@ const assetInfo = async (asset, chain) => {
 }
 };
 
+async function getBorrowerAndSender(chain, txHash) {
+
+    // Get transaction details
+    const tx = await PROVIDERS[chain].getTransaction(txHash);
+    const sender = tx.from;
+
+    // Get transaction receipt
+    const receipt = await PROIVDERS[chain].getTransactionReceipt(txHash);
+
+    // Create an interface to decode the event logs
+    const contractInterface = new ethers.utils.Interface(ABI.FEECOLLECTOR);
+    const contractAddress = ADDRESS[chain].FEECOLLECTOR
+    let borrower;
+
+    // Loop through logs and find the relevant event
+    for (const log of receipt.logs) {
+        if (log.address === contractAddress) {
+            try {
+                const parsedLog = contractInterface.parseLog(log);
+                if (parsedLog.name === 'FeeCollected') {
+                    borrower = parsedLog.args.borrower;
+                    break; 
+                }
+            } catch (err) {
+                console.error('Error parsing log to find liquidator and liquidated addresses ', err);
+            }
+        }
+    }
+
+    return [ borrower, sender ];
+}
+
 async function getTransactionSender(provider, txHash) {
     try {
         // Fetch the transaction details using the given transaction hash
@@ -91,14 +123,13 @@ const eventHandlers = {
   },
   
 
-// WIP finalizing formatting for embeds
-/*  LIQUIDATION: async (event, chain) => {
+  LIQUIDATION: async (event, chain) => {
     console.log(`${chain} liquidation`, event);
     const liq = await processLiquidated(event, chain);
     console.log("liquidation returned",liq);
     testingChannel.send({ embeds: [liquidationEmbed(liq)] });
   },
-*/
+
   REDEMPTION: async (event, chain) => {
     console.log(`${chain} redemption`, event);
     const redeemed = await processRedeemed(event, chain);
@@ -198,7 +229,10 @@ async function processLiquidated(log, chain) {
   const ltv = parseFloat(liquidatedDebt) / collateralValue
   const ltvpercentage = ltv * 100
 
+  const [borrower,sender] = await getBorrowerAndSender(chain, log.transactionHash);
   const liquidationInfo = {
+      borrower: borrower,
+      sender: sender,
       asset: asset,
       txHash: log.transactionHash,
       chain: chain,

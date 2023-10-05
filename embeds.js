@@ -53,17 +53,41 @@ const liquidationEmbed = (liquidationData) => {
     }
 
     const vEmbed = new MessageEmbed()
-      .setColor("#b06dfc")
-      .setTitle("New " + liquidationData.symbol + " liquidation on " + capitalizeFirstLetter(liquidationData.chain))
-      .setURL(`${ETHERSCAN[liquidationData.chain]}/tx/${liquidationData.txHash}`)
-      .setDescription(  
-          "`$" + (liquidationData.price/1e18).toFixed(2) + "` " + liquidationData.symbol + " \n" +
-          "`" + liquidationData.liquidatedColl.toFixed(2) + "` " + liquidationData.symbol + " liquidated\n" +
-          "`" + liquidationData.liquidatedDebt.toFixed(2) + "` GRAI debt\n" +
-          "`" + liquidationData.ltv.toFixed(2) + "%` LTV\n" +
-          "`" + liquidationData.debtTokenGasCompensation.toFixed(2) + "` GRAI to liquidator\n" +
-          "`" + liquidationData.collGasCompensation.toFixed(2) + "` " + liquidationData.symbol + " to liquidator"
-      );
+      .setColor("#eeedef")
+      .setTitle(Emoji("rip") + " New liquidation")
+      .setDescription( "["+liquidationData.sender.substring(0,6) + "](" + `https://debank.com/profile/${liquidationData.sender}` + ")  liquidated " + 
+         "["+liquidationData.borrower.substring(0,6) + "](" + `https://debank.com/profile/${liquidationData.borrower}` + ")  on [" + 
+         capitalizeFirstLetter(liquidationData.chain) + 
+         "](" + `${ETHERSCAN[liquidationData.chain]}/tx/${liquidationData.txHash}` + ")")
+       .addField(
+      liquidationData.symbol,
+      liquidationData.liquidatedColl.toFixed(2),
+      true 
+    )
+    .addField(
+      "Price",
+      "$" + (liquidationData.price/1e18).toFixed(2),
+      true
+    )
+
+    .addField(
+      "GRAI Debt",
+      liquidationData.liquidatedDebt.toFixed(2),
+      true 
+    )
+    .addField(
+	"LTV",
+         liquidationData.ltv.toFixed(2) + "%",
+       )
+	.addField(
+		"GRAI to liquidator",
+          	liquidationData.debtTokenGasCompensation.toFixed(2)
+	)
+	.addField(
+		liquidationData.symbol + " to liquidator",
+        	liquidationData.collGasCompensation.toFixed(2)
+	)
+      
     return vEmbed;
 
   } catch (error) {
